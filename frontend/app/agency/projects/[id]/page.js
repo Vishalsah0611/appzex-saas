@@ -30,21 +30,21 @@ export default function ProjectPage() {
   return (<div className="wrap">
     <Link href="/agency">&larr; Back</Link>
     {err && <div className="err">{err}</div>}
-    <h2>{p.name} <span className="badge active">{p.status}</span></h2><p>{p.description} (Due {p.due_date || 'n/a'}, progress <b>{p.progress}%</b>)</p>
+    <h2>{p.name} <span className={'badge ' + p.status}>{p.status.replace('_', ' ')}</span></h2><p>{p.description} (Due {p.due_date || 'n/a'}, progress <b>{p.progress}%</b>)</p>
     <div className="row"><button onClick={health} disabled={aiBusy}>{aiBusy ? 'Analysing...' : 'AI Project Health'}</button></div>
-    {ai && <div className="card" style={{ whiteSpace: 'pre-wrap', marginBottom: 16 }}>{ai}</div>}
+    {ai && <div className="card ai" style={{ whiteSpace: 'pre-wrap', marginBottom: 16 }}>{ai}</div>}
     <h3>Tasks</h3>
     {!ro && <div className="row"><input placeholder="New task title" value={t.title} onChange={e => setT({ ...t, title: e.target.value })} /><input type="date" value={t.due_date} onChange={e => setT({ ...t, due_date: e.target.value })} />
       <select value={t.priority} onChange={e => setT({ ...t, priority: e.target.value })}>{['low', 'medium', 'high'].map(x => <option key={x}>{x}</option>)}</select><button onClick={addTask}>Add task</button></div>}
     <table><thead><tr><th>Task</th><th>Priority</th><th>Due</th><th>Status</th></tr></thead><tbody>
-      {p.tasks.map(k => <tr key={k.id}><td>{k.title}</td><td>{k.priority}</td><td>{k.due_date} {k.status !== 'done' && k.due_date && k.due_date < today() && <span className="badge suspended">overdue</span>}</td>
+      {p.tasks.map(k => <tr key={k.id}><td>{k.title}</td><td><span className={'badge ' + k.priority}>{k.priority}</span></td><td>{k.due_date} {k.status !== 'done' && k.due_date && k.due_date < today() && <span className="badge suspended">overdue</span>}</td>
         <td><select disabled={ro} value={k.status} onChange={e => setStatus(k.id, e.target.value)}>{['todo', 'in_progress', 'done'].map(s => <option key={s}>{s}</option>)}</select></td></tr>)}
       {!p.tasks.length && <tr><td colSpan="4">No tasks yet.</td></tr>}</tbody></table>
     <h3>Files</h3>
     {!ro && <div className="row"><input type="file" onChange={upload} /><label><input type="checkbox" checked={shared} onChange={e => setShared(e.target.checked)} /> Share with client</label></div>}
-    <table><tbody>{p.files.map(f => <tr key={f.id}><td>{f.original_name}</td><td>{f.shared_with_client ? 'Shared with client' : 'Internal'}</td><td><button onClick={() => download(f)}>Download</button></td></tr>)}
+    <table><tbody>{p.files.map(f => <tr key={f.id}><td>{f.original_name}</td><td><span className={'badge ' + (f.shared_with_client ? 'active' : '')}>{f.shared_with_client ? 'Shared with client' : 'Internal'}</span></td><td><button onClick={() => download(f)}>Download</button></td></tr>)}
       {!p.files.length && <tr><td>No files yet.</td></tr>}</tbody></table>
     <h3>Client feedback</h3>
-    <table><tbody>{p.feedback.map(f => <tr key={f.id}><td>{f.title}</td><td>{f.description}</td><td>{f.status}</td></tr>)}{!p.feedback.length && <tr><td>None yet.</td></tr>}</tbody></table>
+    <table><tbody>{p.feedback.map(f => <tr key={f.id}><td>{f.title}</td><td>{f.description}</td><td><span className={'badge ' + f.status}>{f.status.replace('_', ' ')}</span></td></tr>)}{!p.feedback.length && <tr><td>None yet.</td></tr>}</tbody></table>
   </div>);
 }

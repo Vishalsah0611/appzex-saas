@@ -1,9 +1,9 @@
 'use client';
 import { useState } from 'react';
 import { api, homeFor } from '../../lib/api';
-const DEMO = [['Super Admin', 'super@appzex.test'], ['Agency Admin', 'admin@pixel.test'], ['Team', 'team@pixel.test'], ['Client', 'client.acme@pixel.test']];
+const DEMO = [['Super Admin', 'super@appzex.test'], ['Agency Admin', 'admin@pixel.test'], ['Team member', 'team@pixel.test'], ['Client', 'client.acme@pixel.test']];
 export default function Login() {
-  const [email, setEmail] = useState(''), [password, setPassword] = useState('Demo@1234'), [err, setErr] = useState(''), [busy, setBusy] = useState(false);
+  const [email, setEmail] = useState(''), [password, setPassword] = useState('Demo@1234'), [err, setErr] = useState(''), [busy, setBusy] = useState(false), [show, setShow] = useState(false);
   async function submit(e) {
     e.preventDefault(); setErr(''); setBusy(true);
     try {
@@ -13,13 +13,24 @@ export default function Login() {
     } catch (e) { setErr(e.message); setBusy(false); }
   }
   return (
-    <form className="login" onSubmit={submit}>
-      <h2 style={{ margin: 0 }}>AppZex PM: Sign in</h2>
-      {err && <div className="err">{err}</div>}
-      <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
-      <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required />
-      <button disabled={busy}>{busy ? 'Signing in...' : 'Sign in'}</button>
-      <div className="hint">Demo (click to fill): {DEMO.map(([l, em]) => <span key={em} onClick={() => setEmail(em)}>{l} </span>)}</div>
-    </form>
+    <div className="auth">
+      <div className="hero">
+        <h1>Run every client project in one place.</h1>
+        <p>A secure multi-tenant workspace for agencies, with a focused portal for their clients.</p>
+        <ul><li>Fully isolated agency workspaces</li><li>Live project progress from real tasks</li><li>Client feedback and file sharing</li><li>AI project health insights</li></ul>
+      </div>
+      <div className="auth-form">
+        <form className="login" onSubmit={submit}>
+          <h2>Welcome back</h2><div className="hint">Sign in to your workspace</div>
+          {err && <div className="err">{err}</div>}
+          <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
+          <input type={show ? 'text' : 'password'} placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required />
+          <label className="hint"><input type="checkbox" checked={show} onChange={e => setShow(e.target.checked)} /> Show password</label>
+          <button disabled={busy}>{busy ? 'Signing in...' : 'Sign in'}</button>
+          <div className="hint">Demo accounts (click to fill)</div>
+          <div className="chips">{DEMO.map(([l, em]) => <span key={em} onClick={() => { setEmail(em); setPassword('Demo@1234'); }}>{l}</span>)}</div>
+        </form>
+      </div>
+    </div>
   );
 }

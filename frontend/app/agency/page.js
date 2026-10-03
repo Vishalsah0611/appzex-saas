@@ -17,7 +17,7 @@ export default function Agency() {
   async function setFb(id, status) { try { await api('/api/feedback/' + id, { method: 'PATCH', body: { status } }); load(); } catch (e) { setErr(e.message); } }
   const pending = feedback.filter(f => ['open', 'in_review', 'in_progress'].includes(f.status)).length;
   const C = ({ l, v }) => <div className="card">{l}<b>{v}</b></div>;
-  const Bar = ({ v }) => <div style={{ background: '#e6eaf3', borderRadius: 6, width: 120, display: 'inline-block' }}><div style={{ width: v + '%', background: '#2453e8', height: 8, borderRadius: 6 }} /></div>;
+  const Bar = ({ v }) => <span className="bar"><i style={{ width: v + '%' }} /></span>;
   return (<div className="wrap">
     {err && <div className="err">{err}</div>}
     <div className="row">{['dashboard', 'projects', 'clients', 'feedback'].map(t => <button key={t} className={tab === t ? '' : 'grey'} onClick={() => setTab(t)}>{t[0].toUpperCase() + t.slice(1)}</button>)}</div>
@@ -31,7 +31,7 @@ export default function Agency() {
         <input type="date" value={pf.due_date} onChange={e => setPf({ ...pf, due_date: e.target.value })} />
         <button onClick={() => save('/api/projects', pf, () => setPf({ name: '', description: '', client_id: '', due_date: '' }))}>Add project</button></div>}
       <table><thead><tr><th>Project</th><th>Client</th><th>Status</th><th>Priority</th><th>Due</th><th>Progress</th></tr></thead><tbody>
-        {projects.map(p => <tr key={p.id}><td><Link href={'/agency/projects/' + p.id}>{p.name}</Link></td><td>{p.company}</td><td>{p.status}</td><td>{p.priority}</td><td>{p.due_date}</td><td><Bar v={p.progress} /> {p.progress}%</td></tr>)}
+        {projects.map(p => <tr key={p.id}><td><Link href={'/agency/projects/' + p.id}>{p.name}</Link></td><td>{p.company}</td><td><span className={'badge ' + p.status}>{p.status.replace('_', ' ')}</span></td><td><span className={'badge ' + p.priority}>{p.priority}</span></td><td>{p.due_date}</td><td><Bar v={p.progress} /> {p.progress}%</td></tr>)}
         {!projects.length && <tr><td colSpan="6">No projects yet.</td></tr>}</tbody></table></>}
     {tab === 'clients' && <>
       {canEdit && <div className="row">{['company', 'contact_name', 'email', 'phone', 'notes'].map(k => <input key={k} placeholder={k.replace('_', ' ')} value={cf[k]} onChange={e => setCf({ ...cf, [k]: e.target.value })} />)}
