@@ -145,23 +145,45 @@ app.get('/api/files/:id/download', auth, wrap(async (req, res) => {
 }));
 
 // ---------- AI: Project Health (only this project's data is sent) ----------
+const AI_SYSTEM = 'You are a project health analyst for an agency. Given JSON project data, reply with: 1) a 2-sentence status summary, 2) a risk level (Low/Medium/High), 3) up to 4 concrete risks (overdue tasks, stalled work, unresolved feedback), 4) up to 3 suggested next actions. Use only the given data. Be concise.';
+
+async function callAI(userText) {
+  if (process.env.GEMINI_API_KEY) {
+    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: 'POST', signal: AbortSignal.timeout(20000),
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: AI_SYSTEM }] },
+        contents: [{ role: 'user', parts: [{ text: userText }] }],
+        generationConfig: { maxOutputTokens: 2000 } }) });
+    if (!r.ok) throw new Error('gemini ' + r.status + ' ' + (await r.text()).slice(0, 300));
+    const j = await r.json();
+    return (j.candidates?.[0]?.content?.parts || []).map(x => x.text || '').join('\n');
+  }
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST', signal: AbortSignal.timeout(20000),
+    headers: { 'content-type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: process.env.AI_MODEL || 'claude-sonnet-5-5', max_tokens: 700, system: AI_SYSTEM,
+      messages: [{ role: 'user', content: userText }] }) });
+  if (!r.ok) throw new Error('anthropic ' + r.status);
+  const j = await r.json();
+  return j.content.filter(c => c.type === 'text').map(c => c.text).join('\n');
+}
+
 app.post('/api/projects/:id/ai/health', AG, wrap(async (req, res) => {
   const p = await getProject(req.ctx, req.params.id); if (!p) return res.status(404).json({ error: 'Not found' });
-  if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'AI is not configured on this server.' });
+  if (!process.env.GEMINI_API_KEY && !process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'AI is not configured on this server.' });
   const sel = t => db.query(`SELECT * FROM ${t} WHERE project_id=? AND agency_id=?`, [p.id, p.agency_id]).then(r => r[0]);
   const [tasks, fb] = [await sel('tasks'), await sel('feedback')];
   const data = { project: { name: p.name, status: p.status, due: p.due_date, today: new Date().toISOString().slice(0, 10) },
     tasks: tasks.map(t => ({ title: t.title, status: t.status, priority: t.priority, due: t.due_date })), feedback: fb.map(f => ({ title: f.title, status: f.status })) };
   try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', signal: AbortSignal.timeout(20000),
-      headers: { 'content-type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: process.env.AI_MODEL || 'claude-sonnet-5-5', max_tokens: 700,
-        system: 'You are a project health analyst for an agency. Given JSON project data, reply with: 1) a 2-sentence status summary, 2) a risk level (Low/Medium/High), 3) up to 4 concrete risks (overdue tasks, stalled work, unresolved feedback), 4) up to 3 suggested next actions. Use only the given data. Be concise.',
-        messages: [{ role: 'user', content: JSON.stringify(data) }] }) });
-    if (!r.ok) throw new Error('upstream ' + r.status);
-    const j = await r.json(); await log(p.agency_id, req.ctx.uid, 'ai.health_generated', 'project', p.id);
-    res.json({ report: j.content.filter(c => c.type === 'text').map(c => c.text).join('\n') });
-  } catch (e) { res.status(502).json({ error: 'AI is unavailable right now. Please try again shortly.' }); }
+    const report = await callAI(JSON.stringify(data));
+    if (!report.trim()) throw new Error('empty AI response');
+    await log(p.agency_id, req.ctx.uid, 'ai.health_generated', 'project', p.id);
+    res.json({ report });
+  } catch (e) { console.error('AI error:', e.message); res.status(502).json({ error: 'AI is unavailable right now. Please try again shortly.' }); }
 }));
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
